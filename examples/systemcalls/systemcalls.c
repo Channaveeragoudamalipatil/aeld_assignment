@@ -16,8 +16,16 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
-
+int ret = system(cmd);
+if(ret==-1)
+{
+    return false;
+}
+else
+    if(WIFEXITED(ret) && WEXITSTATUS(ret)==0)
     return true;
+    else
+    return false;
 }
 
 /**
@@ -47,7 +55,7 @@ bool do_exec(int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
+    // command[count] = command[count];
 
 /*
  * TODO:
@@ -58,10 +66,33 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
-
     va_end(args);
 
-    return true;
+    int pid =fork();
+    if(pid<0){
+        return false;
+    }
+
+    if(pid == 0)
+    {
+        if(execv(command[0],command)==-1)
+        {
+            _exit(1);
+        }
+    }
+
+    int status;
+
+    if(waitpid(pid,&status,0)==-1)
+    {
+        return false;
+    }
+
+    if(WIFEXITED(status) && WEXITSTATUS(status)==0)
+    {
+        return true;
+    }
+    else return false;
 }
 
 /**
@@ -93,7 +124,34 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *
 */
 
-    va_end(args);
+va_end(args);
+
+int pid=fork();
+if (pid == 0)
+{
+    int fd= open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+    if(dup2(fd,1)<0) 
+    {
+    perror("dup2 failed");
+    _exit(1);
+    }    
+    close(fd);
+    
+    if(execv(command[0],command)==-1)
+    {
+        perror("execv failed_redirect");
+        _exit(1);
+    }
+}
+
+int status;
+if(waitpid(pid, &status, 0)==-1){
+    return false;
+}
+
+if(WIFEXITED(status) && WEXITSTATUS(status)==0){
 
     return true;
+}
+else return false;
 }
